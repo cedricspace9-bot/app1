@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Hub | Ultimate USB Vault</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h2, h3, h4 { margin-top: 0; color: #1e3c72; }
+
+        .container {
+            width: 100%;
+            max-width: 700px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .top-area { border-top: 5px solid #00c6ff; }
+        .down-area { border-top: 5px solid #ff416c; }
+
+        input[type="text"], input[type="password"] {
+            width: calc(100% - 24px);
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        button {
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        button:active { transform: scale(0.97); }
+        .btn-full { width: 100%; }
+        .btn-primary { background: linear-gradient(to right, #00c6ff, #0072ff); }
+        .btn-controller { background: linear-gradient(to right, #ff416c, #ff4b2b); }
+        .btn-logout { background: #666; margin-top: 15px; }
+
+        /* Action Buttons for Files */
+        .btn-open { background: #28a745; }
+        .btn-present { background: #00c6ff; }
+        .btn-delete { background: #ff4d4d; }
+
+        .generated-code-box {
+            background: #eef2f3;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff416c;
+            letter-spacing: 2px;
+            margin-top: 15px;
+            border: 2px dashed #ff416c;
+        }
+
+        #drop-zone {
+            border: 2px dashed #00c6ff;
+            border-radius: 8px;
+            padding: 25px;
+            text-align: center;
+            background-color: #f0f8ff;
+            cursor: pointer;
+            margin: 15px 0;
+        }
+
+        .progress-bar-container { width: 100%; background: #ddd; border-radius: 10px; margin-top: 10px; overflow: hidden; }
+        .progress-bar { height: 18px; background: linear-gradient(to right, #00c6ff, #0072ff); width: 0%; transition: width 0.5s; }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 5px solid #00c6ff;
+        }
+        
+        .file-info { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 10px; }
+        .button-group { display: flex; gap: 6px; }
+
+        /* MODAL POPUPS (Viewer & Presenter) */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 9999;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content-box {
+            background: #fff;
+            width: 90%;
+            max-width: 800px;
+            height: 80vh;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: #1e3c72;
+            color: #fff;
+        }
+
+        .modal-body {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #111;
+            padding: 10px;
+            overflow: auto;
+        }
+
+        .modal-body img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .modal-body video { max-width: 100%; max-height: 100%; }
+        .modal-body audio { width: 80%; }
+        .modal-body iframe { width: 100%; height: 100%; border: none; background: #fff; }
+
+        /* Fullscreen Presentation Modal */
+        #presentation-modal { background: #000; }
+        #presentation-modal .modal-content-box { width: 100vw; height: 100vh; max-width: 100%; border-radius: 0; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <!-- TOP AREA: ACCESS -->
+        <div class="card top-area" id="access-section">
+            <h2>Access Library</h2>
+            <p>Enter your pass to open your presentation vault.</p>
+            <input type="text" id="user-code-input" placeholder="Enter Library Pass...">
+            <button class="btn-primary btn-full" onclick="openLibrary()">Enter Library</button>
+            <p id="login-error" style="color: red; display: none;">Invalid pass. Try again.</p>
+        </div>
+
+        <!-- INSIDE THE LIBRARY -->
+        <div class="card top-area" id="library-section" style="display:none;">
+            <h2>My Vault</h2>
+            
+            <div>
+                <h4>Storage Quota (Limit: 700 GB)</h4>
+                <p id="storage-text" style="margin-bottom: 5px; font-weight: bold;"></p>
+                <div class="progress-bar-container">
+                    <div id="storage-bar" class="progress-bar"></div>
+                </div>
+            </div>
+
+            <div id="drop-zone">
+                <p>💻 Drag & drop images, audios, PDFs, or videos</p>
+                <p style="font-size: 12px; color: #666;">Or click to browse from your device</p>
+                <input type="file" id="file-input" multiple style="display: none;">
+            </div>
+
+            <h4>My Files</h4>
+            <div id="file-list"></div>
+
+            <button class="btn-logout btn-full" onclick="closeLibrary()">Log Out</button>
+        </div>
+
+        <!-- DOWN AREA: CONTROLLER -->
+        <div class="card down-area" id="controller-section">
+            <h2>Controller Zone</h2>
+            <p>Enter master code (1234) to generate user passes.</p>
+            <input type="password" id="admin-input" placeholder="Enter Controller Code...">
+            <button class="btn-controller btn-full" onclick="unlockController()">Unlock Tools</button>
+            <p id="admin-error" style="color: red; display: none;">Wrong controller code.</p>
+
+            <div id="admin-tools" style="display: none; margin-top: 20px;">
+                <hr style="border: 1px solid #eee; margin-bottom: 20px;">
+                <button class="btn-controller btn-full" onclick="createPass()">+ Create New Pass</button>
+                <div id="new-pass-display" class="generated-code-box" style="display: none;"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- SMART FILE VIEWER MODAL (Open Button) -->
+    <div id="viewer-modal" class="modal">
+        <div class="modal-content-box">
+            <div class="modal-header">
+                <span id="viewer-title" style="font-weight: bold;">File View</span>
+                <button class="btn-delete" onclick="closeViewer()">Close (ESC)</button>
+            </div>
+            <div class="modal-body" id="viewer-body">
+                <!-- Content gets dynamically inserted here without black screens -->
+            </div>
+        </div>
+    </div>
+
+    <!-- FULL SCREEN PRESENTATION MODAL (Present Button) -->
+    <div id="presentation-modal" class="modal">
+        <div class="modal-content-box">
+            <div class="modal-header">
+                <span id="present-title" style="font-weight: bold;">Presenting...</span>
+                <button class="btn-delete" onclick="closePresentation()">Exit Fullscreen (ESC)</button>
+            </div>
+            <div class="modal-body">
+                <iframe id="presentation-iframe" src=""></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CONTROLLER_CODE = "1234";
+        const LIMIT_700GB = 700 * 1024 * 1024 * 1024; 
+        let currentActivePass = null;
+        let appDatabase = JSON.parse(localStorage.getItem('cloudHubDatabase')) || {};
+
+        function unlockController() {
+            if (document.getElementById('admin-input').value === CONTROLLER_CODE) {
+                document.getElementById('admin-tools').style.display = 'block';
+                document.getElementById('admin-error').style.display = 'none';
+                document.getElementById('admin-input').style.display = 'none';
+                document.querySelector('#controller-section .btn-controller').style.display = 'none';
+            } else {
+                document.getElementById('admin-error').style.display = 'block';
+            }
+        }
+
+        function createPass() {
+            const newPass = Math.random().toString(36).substring(2, 8).toUpperCase();
+            appDatabase[newPass] = { storageUsed: 0, files: [] };
+            saveDatabase();
+            const display = document.getElementById('new-pass-display');
+            display.style.display = 'block';
+            display.innerText = newPass;
+        }
+
+        function openLibrary() {
+            const code = document.getElementById('user-code-input').value.trim().toUpperCase();
+            if (appDatabase[code]) {
+                currentActivePass = code;
+                document.getElementById('access-section').style.display = 'none';
+                document.getElementById('controller-section').style.display = 'none';
+                document.getElementById('library-section').style.display = 'block';
+                document.getElementById('login-error').style.display = 'none';
+                updateLibraryUI();
+            } else {
+                document.getElementById('login-error').style.display = 'block';
+            }
+        }
+
+        function closeLibrary() {
+            currentActivePass = null;
+            document.getElementById('user-code-input').value = '';
+            document.getElementById('access-section').style.display = 'block';
+            document.getElementById('controller-section').style.display = 'block';
+            document.getElementById('library-section').style.display = 'none';
+        }
+
+        function updateLibraryUI() {
+            const library = appDatabase[currentActivePass];
+            const gbUsed = (library.storageUsed / (1024 * 1024 * 1024)).toFixed(6);
+            document.getElementById('storage-text').innerText = `${gbUsed} GB / 700 GB Used`;
+            document.getElementById('storage-bar').style.width = Math.min((library.storageUsed / LIMIT_700GB) * 100, 100) + '%';
+
+            const listDiv = document.getElementById('file-list');
+            listDiv.innerHTML = '';
+            
+            if (library.files.length === 0) {
+                listDiv.innerHTML = '<p style="color: #666; font-style: italic;">No files uploaded yet.</p>';
+            } else {
+                library.files.forEach((file, index) => {
+                    const mbSize = (file.size / (1024 * 1024)).toFixed(2);
+                    listDiv.innerHTML += `
+                        <div class="file-item">
+                            <span class="file-info">📄 <strong>${file.name}</strong> (${mbSize} MB)</span>
+                            <div class="button-group">
+                                <button class="btn-open" onclick="openFileViewer(${index})">👁️ Open</button>
+                                <button class="btn-present" onclick="startPresentation(${index})">▶ Present</button>
+                                <button class="btn-delete" onclick="deleteFile(${index}, ${file.size})">🗑️ Delete</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        function handleFiles(files) {
+            const library = appDatabase[currentActivePass];
+
+            for (let file of files) {
+                if (library.storageUsed + file.size > LIMIT_700GB) {
+                    alert(`Upload blocked! ${file.name} exceeds the 700 GB limit.`);
+                    continue;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    library.storageUsed += file.size;
+                    library.files.push({
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        data: e.target.result
+                    });
+                    saveDatabase();
+                    updateLibraryUI();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // --- 1. OPEN BUTTON LOGIC (Smart Interface, No Black Screen) ---
+        window.openFileViewer = function(index) {
+            const file = appDatabase[currentActivePass].files[index];
+            const body = document.getElementById('viewer-body');
+            document.getElementById('viewer-title').innerText = file.name;
+            body.innerHTML = ''; // Clear previous content
+
+            const fileType = file.type || '';
+
+            if (fileType.startsWith('image/')) {
+                body.innerHTML = `<img src="${file.data}" alt="${file.name}">`;
+            } else if (fileType.startsWith('audio/')) {
+                body.innerHTML = `<audio controls autoplay src="${file.data}"></audio>`;
+            } else if (fileType.startsWith('video/')) {
+                body.innerHTML = `<video controls autoplay src="${file.data}"></video>`;
+            } else if (fileType.includes('pdf') || fileType.startsWith('text/')) {
+                body.innerHTML = `<iframe src="${file.data}"></iframe>`;
+            } else {
+                // Fallback for documents or unspecified formats
+                body.innerHTML = `<iframe src="${file.data}"></iframe>`;
+            }
+
+            document.getElementById('viewer-modal').style.display = 'flex';
+        };
+
+        window.closeViewer = function() {
+            document.getElementById('viewer-body').innerHTML = '';
+            document.getElementById('viewer-modal').style.display = 'none';
+        };
+
+        // --- 2. PRESENT BUTTON LOGIC (Full Screen Presentation Engine) ---
+        window.startPresentation = function(index) {
+            const file = appDatabase[currentActivePass].files[index];
+            const modal = document.getElementById('presentation-modal');
+            const iframe = document.getElementById('presentation-iframe');
+            
+            document.getElementById('present-title').innerText = `Presenting: ${file.name}`;
+            iframe.src = file.data;
+            modal.style.display = 'flex';
+
+            if (modal.requestFullscreen) {
+                modal.requestFullscreen();
+            }
+        };
+
+        window.closePresentation = function() {
+            const modal = document.getElementById('presentation-modal');
+            document.getElementById('presentation-iframe').src = '';
+            modal.style.display = 'none';
+
+            if (document.exitFullscreen && document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+        };
+
+        // --- 3. DELETE BUTTON LOGIC ---
+        window.deleteFile = function(index, size) {
+            const library = appDatabase[currentActivePass];
+            library.storageUsed -= size;
+            library.files.splice(index, 1); 
+            if (library.storageUsed < 0) library.storageUsed = 0; 
+            saveDatabase();
+            updateLibraryUI();
+        };
+
+        // Close windows on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === "Escape") {
+                closeViewer();
+                closePresentation();
+            }
+        });
+
+        function saveDatabase() {
+            localStorage.setItem('cloudHubDatabase', JSON.stringify(appDatabase));
+        }
+    </script>
+</body>
+</html>
